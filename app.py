@@ -469,7 +469,7 @@ elif st.session_state.phase == "ending":
 
 # ---------------- Footer ----------------
 st.markdown("<div class='hr'></div>", unsafe_allow_html=True)
-st.markdown("<div class='small'>Controls: Buttons progress the phases. Tutorial precedes gameplay. All narratives match project spec.</div>", unsafe_allow_html=True)
+st.markdown("<div class='small'>Dr. Lambda is Priyansh Gajbhiye</div>", unsafe_allow_html=True)
 
-st.markdown("<div class='small'>Controls: use buttons to progress phases. Text is presented 8-bit style. Tutorial precedes gameplay.</div>", unsafe_allow_html=True)
+st.markdown("<div class='small'>24CE10011</div>", unsafe_allow_html=True)
 
