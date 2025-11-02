@@ -182,4 +182,4 @@ if st.button("Shoot (simulate event)"):
 if st.button("Restart"):
     for key in ["round", "alive", "lmbd", "mu"]:
         st.session_state.pop(key, None)
-    st.experimental_rerun()
+    st.rerun()
