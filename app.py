@@ -51,7 +51,6 @@ def typewriter(text, speed=0.02):
         displayed_text += char
         placeholder.markdown(f"<div class='game-text'>{displayed_text}</div>", unsafe_allow_html=True)
         time.sleep(speed)
-    return placeholder
 
 # ---------- TUTORIAL MESSAGES ----------
 intro_lines = [
@@ -73,13 +72,21 @@ if "step" not in st.session_state:
     st.session_state.step = 0
 if "finished_intro" not in st.session_state:
     st.session_state.finished_intro = False
+if "last_displayed_step" not in st.session_state:
+    st.session_state.last_displayed_step = -1
 
 st.markdown("<div class='title'>λ: The Last Queue</div>", unsafe_allow_html=True)
 
 # ---------- MAIN FLOW ----------
 if not st.session_state.finished_intro:
-    current_line = intro_lines[st.session_state.step]
-    typewriter(current_line)
+    step = st.session_state.step
+
+    # Only play typewriter when a new line is first reached
+    if st.session_state.last_displayed_step != step:
+        st.session_state.last_displayed_step = step
+        typewriter(intro_lines[step])
+    else:
+        st.markdown(f"<div class='game-text'>{intro_lines[step]}</div>", unsafe_allow_html=True)
 
     if st.button("Next"):
         st.session_state.step += 1
