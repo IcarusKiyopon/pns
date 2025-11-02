@@ -52,4 +52,4 @@ elif stage == 3:
     st.write(f"Overall survival probability: *{overall:.2f}*")
     if st.button("Restart Game"):
         st.session_state.stage = 0
-        st.experimental_rerun()
+        st.rerun()
