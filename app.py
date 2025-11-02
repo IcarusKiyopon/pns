@@ -240,12 +240,18 @@ if st.session_state.phase == "tutorial":
     if idx < len(tutorial_lines):
         key = f"tutorial_{idx}"
         typewriter_once(key, tutorial_lines[idx], speed=0.02)
-        c1, c2, c3 = st.columns([1, 2, 1])
-        with c2:
+        
+        colA, colB, colC, colD = st.columns([0.8, 1, 0.8, 1])
+        with colB:
             if st.button("Next"):
                 st.session_state.tutorial_step += 1
                 if st.session_state.tutorial_step >= len(tutorial_lines):
                     st.session_state.tutorial_finished = True
+                st.rerun()
+        with colD:
+            if st.button("⏩ Skip Tutorial"):
+                st.session_state.tutorial_finished = True
+                st.session_state.tutorial_step = len(tutorial_lines)
                 st.rerun()
     else:
         st.session_state.tutorial_finished = True
@@ -260,6 +266,7 @@ if st.session_state.phase == "tutorial":
             if st.button("Decline (Quit)"):
                 trigger_ending("voluntary_exit")
                 st.rerun()
+
 
 # ---------------- Playing state ----------------
 elif st.session_state.phase == "playing":
