@@ -1,55 +1,117 @@
 import streamlit as st
-import numpy as np
+import random
+import time
 
-st.set_page_config(page_title="λ: The Last Queue", page_icon="☣", layout="centered")
-st.markdown("<h1 style='text-align:center;'>λ: The Last Queue</h1>", unsafe_allow_html=True)
-st.markdown("---")
+# --------------------- PAGE SETUP ---------------------
+st.set_page_config(page_title="Probabilistic Roulette", page_icon="🎮", layout="centered")
 
-# Game state
-if "stage" not in st.session_state:
-    st.session_state.stage = 0
+# --------------------- CSS STYLING ---------------------
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+    html, body, [class*="css"]  {
+        font-family: 'Press Start 2P', cursive !important;
+        background-color: #9bbc0f;
+        color: #0f380f;
+        text-align: center;
+    }
+    .stButton>button {
+        background-color: #306230;
+        color: #e0f8cf;
+        border: 3px solid #0f380f;
+        font-family: 'Press Start 2P', cursive;
+        font-size: 12px !important;
+        padding: 10px 20px;
+        border-radius: 0px;
+        transition: all 0.1s ease-in-out;
+    }
+    .stButton>button:hover {
+        background-color: #8bac0f;
+        color: black;
+    }
+    .big-text {
+        font-size: 18px !important;
+        line-height: 1.8;
+    }
+    .title {
+        font-size: 24px !important;
+        color: #0f380f;
+    }
+    body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: repeating-linear-gradient(
+            rgba(0,0,0,0.05) 0px,
+            rgba(0,0,0,0.05) 1px,
+            transparent 1px,
+            transparent 2px
+        );
+        z-index: 9999;
+        pointer-events: none;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-def next_stage():
-    st.session_state.stage += 1
+# --------------------- TEXT ANIMATION ---------------------
+def type_text(text, delay=0.03):
+    """Simulate typing animation for story narration."""
+    placeholder = st.empty()
+    s = ""
+    for char in text:
+        s += char
+        placeholder.markdown(f"<p class='big-text'>{s}</p>", unsafe_allow_html=True)
+        time.sleep(delay)
 
-stage = st.session_state.stage
+# --------------------- INITIALIZE SESSION STATE ---------------------
+if "round" not in st.session_state:
+    st.session_state.round = 1
+    st.session_state.queue_length = 3  # initial queue
+    st.session_state.alive = True
+    st.session_state.score = 0
 
-if stage == 0:
-    st.markdown("You wake up in a concrete room. The PA system hums.")
-    st.markdown("> \"Welcome to the Probability Trials.\"")
-    if st.button("Enter the queue"):
-        next_stage()
+# --------------------- TITLE ---------------------
+st.markdown("<br><div class='title'>🎲 PROBABILISTIC ROULETTE 🎲</div><br>", unsafe_allow_html=True)
 
-elif stage == 1:
-    st.subheader("Stage 1: The Queue (M/M/1)")
-    λ = st.slider("Arrival Rate (λ)", 1.0, 5.0, 3.0)
-    μ = st.slider("Service Rate (μ)", 1.0, 6.0, 5.0)
-    if μ <= λ:
-        st.error("System unstable (μ must be > λ)")
-    else:
-        wait_time = 1 / (μ - λ)
-        st.write(f"Expected waiting time: *{wait_time:.2f} units*")
-        if st.button("Proceed to Poison Chamber"):
-            next_stage()
+# --------------------- GAME LOGIC ---------------------
+if st.session_state.alive:
 
-elif stage == 2:
-    st.subheader("Stage 2: Poison Chamber (Poisson Process)")
-    λ_poison = st.slider("Poison drop rate λ", 0.5, 5.0, 2.0)
-    drops = np.random.poisson(λ_poison)
-    st.write(f"The chamber dripped *{drops} times*.")
-    survival_prob = np.exp(-λ_poison)
-    st.write(f"Probability you survive: *{survival_prob:.2f}*")
-    if st.button("Proceed to Roulette"):
-        st.session_state.survival = survival_prob
-        next_stage()
+    # Queue length can increase with Poisson(λ=1.5)
+    arrivals = random.poisson(lam=1.5) if hasattr(random, 'poisson') else int(random.expovariate(1/1.5))
+    st.session_state.queue_length += arrivals
 
-elif stage == 3:
-    st.subheader("Stage 3: Roulette (Bernoulli Trial)")
-    p = 0.8
-    result = np.random.choice(["Click", "Bang"], p=[p, 1 - p])
-    st.write(f"The cylinder spins... *{result}!*")
-    overall = st.session_state.survival * p
-    st.write(f"Overall survival probability: *{overall:.2f}*")
-    if st.button("Restart Game"):
-        st.session_state.stage = 0
+    type_text(f"Round {st.session_state.round}: The tavern queue has {st.session_state.queue_length} souls awaiting their fate...")
+
+    # Probability of poison increases slightly each round
+    poison_prob = min(0.2 + st.session_state.round * 0.05, 0.8)
+    wait_time = random.expovariate(1.0 / (st.session_state.queue_length + 1))
+
+    st.markdown(f"🧍 Queue length: **{st.session_state.queue_length}**")
+    st.markdown(f"⏳ Expected wait time (M/M/1): **{wait_time:.2f} units**")
+    st.markdown(f"☠️ Poison probability this round: **{poison_prob*100:.1f}%**")
+
+    if st.button("Take the Shot 💥"):
+        st.session_state.round += 1
+        st.session_state.queue_length = max(1, st.session_state.queue_length - 1)
+        shot = random.random()
+        if shot < poison_prob:
+            type_text("💀 The chamber clicks... then silence. You feel your breath fade. Game over.", 0.02)
+            st.session_state.alive = False
+        else:
+            type_text("🎯 You survive! The crowd roars. Another stranger steps up.", 0.02)
+            st.session_state.score += 1
+            st.rerun()
+
+else:
+    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown(f"🏆 Final Score: **{st.session_state.score} survivors**")
+    if st.button("🔁 Restart Game"):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
         st.rerun()
+
+# --------------------- FOOTER ---------------------
+st.markdown("<br><hr><p style='font-size:10px'>Made with ❤️ in Streamlit · IIT KGP Probability & Statistics Game</p>", unsafe_allow_html=True)
