@@ -44,36 +44,72 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ---------- TYPEWRITER FUNCTION ----------
-def typewriter(text, speed=0.02):
+def typewriter_effect(text, speed=0.025):
     placeholder = st.empty()
-    displayed_text = ""
+    typed = ""
     for char in text:
-        displayed_text += char
-        placeholder.markdown(f"<div class='game-text'>{displayed_text}</div>", unsafe_allow_html=True)
+        typed += char
+        placeholder.markdown(f"<div class='game-text'>{typed}</div>", unsafe_allow_html=True)
         time.sleep(speed)
+    return text
 
-# ---------- TUTORIAL MESSAGES ----------
+# ---------- ELABORATED INTRO STORY ----------
 intro_lines = [
+    "SYSTEM BOOTING...",
+    "ACCESS GRANTED.",
     "WELCOME, SUBJECT #417.",
-    "YOU HAVE ENTERED THE LAB OF UNCERTAINTY.",
-    "YOUR BODY CONTAINS A SLOW POISON.",
-    "ANTIDOTES ARRIVE RANDOMLY.",
-    "YOUR LIFE ENDS AT 100% TOXICITY.",
-    "TO EARN ANTIDOTES, YOU MUST PLAY THE ROULETTE.",
-    "EACH TURN — A TEST OF PROBABILITY.",
-    "EACH SECOND — A WAIT IN THE QUEUE.",
-    "λ: ARRIVAL RATE. μ: SERVICE RATE.",
-    "WHEN λ > μ … SYSTEM COLLAPSES.",
-    "THE EXPERIMENT BEGINS."
+    "YOU HAVE ENTERED: THE LAB OF UNCERTAINTY.",
+    "PLEASE REMAIN CALM.",
+    "YOUR BODY CONTAINS A CONTROLLED TOXIN—CODE NAME: LAMBDA SERUM.",
+    "THE ANTIDOTE IS UNSTABLE, DISTRIBUTED BY CHANCE.",
+    "TO SURVIVE, YOU MUST PLAY A GAME OF ORDER AND CHAOS.",
+    "",
+    "EVERY TURN, YOU FACE THREE PHASES:",
+    "",
+    "[1] THE QUEUE PHASE — THE WAIT.",
+    " Subjects arrive randomly, like raindrops in an endless storm.",
+    " λ (lambda) = ARRIVAL RATE.",
+    " μ (mu) = SERVICE RATE.",
+    " When λ > μ, the system collapses... too many subjects, too little time.",
+    " Patience has a cost. The longer you wait, the more the poison seeps in.",
+    "",
+    "[2] THE ROULETTE PHASE — THE TEST.",
+    " The revolver is placed before you.",
+    " Six chambers. One bullet.",
+    " Spin, or not?",
+    " Spin: the event resets — probability = 1/6.",
+    " Don’t spin: the chamber continues — probability shifts as rounds pass.",
+    " A true Bernoulli trial, measured in courage.",
+    "",
+    "[3] THE POISON PHASE — THE DRIFT.",
+    " Toxicity rises with time, modeled as a Poisson(λₚ) process.",
+    " You may find antidotes… or not.",
+    " Antidotes reduce toxicity by random discrete amounts.",
+    "",
+    "BETWEEN EACH ROUND, DR. LAMBDA WILL REPORT:",
+    " • Rounds Survived",
+    " • Current Toxicity (%)",
+    " • System Stability (λ vs μ)",
+    " • Estimated Survival Probability",
+    "",
+    "IF YOUR TOXICITY REACHES 100% — YOU DIE.",
+    "IF THE QUEUE COLLAPSES — YOU DIE.",
+    "IF THE REVOLVER FIRES — YOU DIE.",
+    "",
+    "THE ONLY WAY TO 'WIN'...",
+    "...IS TO OUTLAST ENTROPY.",
+    "",
+    "READY YOUR MIND, SUBJECT #417.",
+    "THE EXPERIMENT BEGINS NOW."
 ]
 
-# ---------- STATE HANDLING ----------
+# ---------- SESSION STATE SETUP ----------
 if "step" not in st.session_state:
     st.session_state.step = 0
 if "finished_intro" not in st.session_state:
     st.session_state.finished_intro = False
-if "last_displayed_step" not in st.session_state:
-    st.session_state.last_displayed_step = -1
+if "displayed_text" not in st.session_state:
+    st.session_state.displayed_text = ""
 
 st.markdown("<div class='title'>λ: The Last Queue</div>", unsafe_allow_html=True)
 
@@ -81,12 +117,10 @@ st.markdown("<div class='title'>λ: The Last Queue</div>", unsafe_allow_html=Tru
 if not st.session_state.finished_intro:
     step = st.session_state.step
 
-    # Only play typewriter when a new line is first reached
-    if st.session_state.last_displayed_step != step:
-        st.session_state.last_displayed_step = step
-        typewriter(intro_lines[step])
+    if st.session_state.displayed_text != intro_lines[step]:
+        st.session_state.displayed_text = typewriter_effect(intro_lines[step])
     else:
-        st.markdown(f"<div class='game-text'>{intro_lines[step]}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='game-text'>{st.session_state.displayed_text}</div>", unsafe_allow_html=True)
 
     if st.button("Next"):
         st.session_state.step += 1
@@ -100,6 +134,6 @@ else:
         st.session_state.started_game = True
         st.rerun()
 
-# ---------- PLACEHOLDER for next phase ----------
 if "started_game" in st.session_state and st.session_state.started_game:
     st.markdown("<div class='game-text'>[Game logic will start here soon...]</div>", unsafe_allow_html=True)
+
