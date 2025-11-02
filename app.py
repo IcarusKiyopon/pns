@@ -1,117 +1,136 @@
 import streamlit as st
 import random
+import math
 import time
 
-# --------------------- PAGE SETUP ---------------------
-st.set_page_config(page_title="Probabilistic Roulette", page_icon="🎮", layout="centered")
+# ---------------- PAGE CONFIG ----------------
+st.set_page_config(page_title="λ: The Last Queue", page_icon="🧪", layout="centered")
 
-# --------------------- CSS STYLING ---------------------
+# ---------------- CSS STYLING ----------------
 st.markdown("""
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-    html, body, [class*="css"]  {
-        font-family: 'Press Start 2P', cursive !important;
-        background-color: #9bbc0f;
-        color: #0f380f;
-        text-align: center;
-    }
-    .stButton>button {
-        background-color: #306230;
-        color: #e0f8cf;
-        border: 3px solid #0f380f;
-        font-family: 'Press Start 2P', cursive;
-        font-size: 12px !important;
-        padding: 10px 20px;
-        border-radius: 0px;
-        transition: all 0.1s ease-in-out;
-    }
-    .stButton>button:hover {
-        background-color: #8bac0f;
-        color: black;
-    }
-    .big-text {
-        font-size: 18px !important;
-        line-height: 1.8;
-    }
-    .title {
-        font-size: 24px !important;
-        color: #0f380f;
-    }
-    body::before {
-        content: "";
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: repeating-linear-gradient(
-            rgba(0,0,0,0.05) 0px,
-            rgba(0,0,0,0.05) 1px,
-            transparent 1px,
-            transparent 2px
-        );
-        z-index: 9999;
-        pointer-events: none;
-    }
-    </style>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+html, body, [class*="css"] {
+  font-family: 'Press Start 2P', cursive !important;
+  background-color: #0f380f;
+  color: #9bbc0f;
+  text-align: center;
+}
+.stButton>button {
+  background-color: #306230;
+  color: #e0f8cf;
+  border: 3px solid #0f380f;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 12px !important;
+  padding: 10px 20px;
+  border-radius: 0px;
+}
+.stButton>button:hover {
+  background-color: #8bac0f;
+  color: black;
+}
+.big {font-size: 14px !important; line-height: 1.8;}
+.title {font-size: 20px !important;}
+.cursor::after {
+  content: '_';
+  animation: blink 1s step-start infinite;
+}
+@keyframes blink { 50% {opacity: 0;} }
+</style>
 """, unsafe_allow_html=True)
 
-# --------------------- TEXT ANIMATION ---------------------
+# ---------------- TEXT EFFECT ----------------
 def type_text(text, delay=0.03):
-    """Simulate typing animation for story narration."""
-    placeholder = st.empty()
+    """Display text letter by letter for effect."""
+    box = st.empty()
     s = ""
     for char in text:
         s += char
-        placeholder.markdown(f"<p class='big-text'>{s}</p>", unsafe_allow_html=True)
+        box.markdown(f"<p class='big cursor'>{s}</p>", unsafe_allow_html=True)
         time.sleep(delay)
+    time.sleep(0.3)
 
-# --------------------- INITIALIZE SESSION STATE ---------------------
+# ---------------- STATE ----------------
 if "round" not in st.session_state:
     st.session_state.round = 1
-    st.session_state.queue_length = 3  # initial queue
+    st.session_state.toxicity = 20.0
+    st.session_state.queue_len = 2
     st.session_state.alive = True
-    st.session_state.score = 0
+    st.session_state.lmbd = 0.8
+    st.session_state.mu = 1.1
+    st.session_state.report = ""
+    st.session_state.survival_prob = 1.0
 
-# --------------------- TITLE ---------------------
-st.markdown("<br><div class='title'>🎲 PROBABILISTIC ROULETTE 🎲</div><br>", unsafe_allow_html=True)
+# ---------------- TITLE ----------------
+st.markdown("<div class='title'>λ : THE LAST QUEUE</div><br>", unsafe_allow_html=True)
 
-# --------------------- GAME LOGIC ---------------------
+# ---------------- GAME LOOP ----------------
 if st.session_state.alive:
 
-    # Queue length can increase with Poisson(λ=1.5)
-    arrivals = random.poisson(lam=1.5) if hasattr(random, 'poisson') else int(random.expovariate(1/1.5))
-    st.session_state.queue_length += arrivals
+    # NARRATION
+    type_text(f"--- ROUND {st.session_state.round} ---")
+    type_text("You wait in the queue...")
+    arrivals = random.poisson(lam=st.session_state.lmbd) if hasattr(random, 'poisson') else int(random.expovariate(1/st.session_state.lmbd))
+    st.session_state.queue_len += arrivals
+    wait = random.expovariate(1/st.session_state.mu)
+    type_text(f"> New arrivals: {arrivals}")
+    type_text(f"> Estimated wait: {wait:.1f} units")
 
-    type_text(f"Round {st.session_state.round}: The tavern queue has {st.session_state.queue_length} souls awaiting their fate...")
+    # Poison leaks (Poisson)
+    poison_drops = random.poisson(lam=0.6) if hasattr(random, 'poisson') else (0 if random.random() < 0.55 else 1)
+    if poison_drops > 0:
+        gain = poison_drops * 8
+        st.session_state.toxicity += gain
+        type_text(f"> Poison leak detected. +{gain}% toxicity.")
 
-    # Probability of poison increases slightly each round
-    poison_prob = min(0.2 + st.session_state.round * 0.05, 0.8)
-    wait_time = random.expovariate(1.0 / (st.session_state.queue_length + 1))
+    # Roulette choice
+    type_text("It’s your turn at the roulette.")
+    spin = st.radio("Choose:", ["[1] Spin the chamber (independent)", "[2] Don’t spin (dependent)"])
+    if st.button("Pull the trigger"):
+        bullet = random.randint(1, 6)
+        if spin.startswith("[1]"):
+            chamber = random.randint(1, 6)
+        else:
+            chamber = bullet  # depends on prior state, same distribution effectively
 
-    st.markdown(f"🧍 Queue length: **{st.session_state.queue_length}**")
-    st.markdown(f"⏳ Expected wait time (M/M/1): **{wait_time:.2f} units**")
-    st.markdown(f"☠️ Poison probability this round: **{poison_prob*100:.1f}%**")
-
-    if st.button("Take the Shot 💥"):
-        st.session_state.round += 1
-        st.session_state.queue_length = max(1, st.session_state.queue_length - 1)
-        shot = random.random()
-        if shot < poison_prob:
-            type_text("💀 The chamber clicks... then silence. You feel your breath fade. Game over.", 0.02)
+        if chamber == 1:
+            type_text("💥 The chamber fires. Simulation ends.")
             st.session_state.alive = False
         else:
-            type_text("🎯 You survive! The crowd roars. Another stranger steps up.", 0.02)
-            st.session_state.score += 1
+            type_text("Click. Empty. You live another round.")
+            st.session_state.toxicity -= 10
+            st.session_state.survival_prob *= (5/6)
+            st.session_state.round += 1
+            st.session_state.queue_len = max(1, st.session_state.queue_len - 1)
+
+            # Report
+            stable = "Stable" if st.session_state.lmbd < st.session_state.mu else "Collapsed"
+            st.session_state.report = f"""
+--- ROUND SUMMARY ---
+Rounds Survived: {st.session_state.round - 1}
+Current Toxicity: {min(st.session_state.toxicity, 100):.1f}%
+Expected Queue Length: {st.session_state.queue_len:.2f}
+λ = {st.session_state.lmbd:.2f}   μ = {st.session_state.mu:.2f}
+Survival Probability (so far): {st.session_state.survival_prob:.2f}
+System Stability: {stable}
+----------------------
+"""
             st.rerun()
 
 else:
-    st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown(f"🏆 Final Score: **{st.session_state.score} survivors**")
-    if st.button("🔁 Restart Game"):
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
+    # ENDINGS
+    if st.session_state.toxicity >= 100:
+        end = "☣️ Toxicity overload. System failure."
+    elif st.session_state.lmbd >= st.session_state.mu:
+        end = "⚠️ Queue overflow. Chaos reigns."
+    elif st.session_state.round >= 10 and st.session_state.lmbd < st.session_state.mu:
+        end = "🧪 You balanced λ and μ. Dr. Lambda nods. You beat the process."
+    else:
+        end = "Simulation terminated."
+    st.markdown(f"<p class='big'>{end}</p>", unsafe_allow_html=True)
+    st.markdown(f"<pre>{st.session_state.report}</pre>", unsafe_allow_html=True)
+    if st.button("Restart"):
+        for k in list(st.session_state.keys()):
+            del st.session_state[k]
         st.rerun()
-
-# --------------------- FOOTER ---------------------
-st.markdown("<br><hr><p style='font-size:10px'>Made with ❤️ in Streamlit · IIT KGP Probability & Statistics Game</p>", unsafe_allow_html=True)
