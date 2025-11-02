@@ -1,136 +1,160 @@
 import streamlit as st
+import numpy as np
 import random
-import math
 import time
 
-# ---------------- PAGE CONFIG ----------------
-st.set_page_config(page_title="λ: The Last Queue", page_icon="🧪", layout="centered")
+# =========================
+# 🎨 GameBoy Theme Styling
+# =========================
+st.set_page_config(page_title="λ: The Last Queue", layout="centered")
 
-# ---------------- CSS STYLING ----------------
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+st.markdown(
+    """
+    <style>
+    body {
+        background-color: #1a2d1a;
+        color: #a6f58f;
+        font-family: 'Press Start 2P', monospace;
+        text-align: center;
+    }
+    .title {
+        font-size: 22px;
+        color: #9aff8f;
+        text-shadow: 0 0 10px #9aff8f;
+        margin-bottom: 20px;
+    }
+    .text {
+        font-size: 14px;
+        line-height: 1.8;
+    }
+    .blink {
+        animation: blink 1s step-start infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+    </style>
 
-html, body, [class*="css"] {
-  font-family: 'Press Start 2P', cursive !important;
-  background-color: #0f380f;
-  color: #9bbc0f;
-  text-align: center;
-}
-.stButton>button {
-  background-color: #306230;
-  color: #e0f8cf;
-  border: 3px solid #0f380f;
-  font-family: 'Press Start 2P', cursive;
-  font-size: 12px !important;
-  padding: 10px 20px;
-  border-radius: 0px;
-}
-.stButton>button:hover {
-  background-color: #8bac0f;
-  color: black;
-}
-.big {font-size: 14px !important; line-height: 1.8;}
-.title {font-size: 20px !important;}
-.cursor::after {
-  content: '_';
-  animation: blink 1s step-start infinite;
-}
-@keyframes blink { 50% {opacity: 0;} }
-</style>
-""", unsafe_allow_html=True)
+    <link href="https://fonts.cdnfonts.com/css/press-start-2p" rel="stylesheet">
+    """,
+    unsafe_allow_html=True
+)
 
-# ---------------- TEXT EFFECT ----------------
-def type_text(text, delay=0.03):
-    """Display text letter by letter for effect."""
-    box = st.empty()
-    s = ""
-    for char in text:
-        s += char
-        box.markdown(f"<p class='big cursor'>{s}</p>", unsafe_allow_html=True)
-        time.sleep(delay)
-    time.sleep(0.3)
-
-# ---------------- STATE ----------------
-if "round" not in st.session_state:
-    st.session_state.round = 1
-    st.session_state.toxicity = 20.0
-    st.session_state.queue_len = 2
-    st.session_state.alive = True
-    st.session_state.lmbd = 0.8
+# =========================
+# 🧠 Initialize Session State
+# =========================
+if "lmbd" not in st.session_state:
+    st.session_state.lmbd = 0.7
+if "mu" not in st.session_state:
     st.session_state.mu = 1.1
-    st.session_state.report = ""
-    st.session_state.survival_prob = 1.0
+if "toxicity" not in st.session_state:
+    st.session_state.toxicity = 0
+if "rounds" not in st.session_state:
+    st.session_state.rounds = 0
+if "alive" not in st.session_state:
+    st.session_state.alive = False
+if "started" not in st.session_state:
+    st.session_state.started = False
+if "message_log" not in st.session_state:
+    st.session_state.message_log = []
 
-# ---------------- TITLE ----------------
-st.markdown("<div class='title'>λ : THE LAST QUEUE</div><br>", unsafe_allow_html=True)
 
-# ---------------- GAME LOOP ----------------
-if st.session_state.alive:
+# =========================
+# 🧩 Helper: Typewriter Effect
+# =========================
+def typewriter(text, delay=0.02):
+    placeholder = st.empty()
+    typed = ""
+    for ch in text:
+        typed += ch
+        placeholder.markdown(f"<p class='text'>{typed}<span class='blink'>█</span></p>", unsafe_allow_html=True)
+        time.sleep(delay)
+    placeholder.markdown(f"<p class='text'>{typed}</p>", unsafe_allow_html=True)
+    st.session_state.message_log.append(text)
 
-    # NARRATION
-    type_text(f"--- ROUND {st.session_state.round} ---")
-    type_text("You wait in the queue...")
-    arrivals = random.poisson(lam=st.session_state.lmbd) if hasattr(random, 'poisson') else int(random.expovariate(1/st.session_state.lmbd))
-    st.session_state.queue_len += arrivals
-    wait = random.expovariate(1/st.session_state.mu)
-    type_text(f"> New arrivals: {arrivals}")
-    type_text(f"> Estimated wait: {wait:.1f} units")
 
-    # Poison leaks (Poisson)
-    poison_drops = random.poisson(lam=0.6) if hasattr(random, 'poisson') else (0 if random.random() < 0.55 else 1)
-    if poison_drops > 0:
-        gain = poison_drops * 8
-        st.session_state.toxicity += gain
-        type_text(f"> Poison leak detected. +{gain}% toxicity.")
+# =========================
+# 🧮 Gameplay Logic
+# =========================
+def queue_phase():
+    arrivals = np.random.poisson(lam=st.session_state.lmbd)
+    waiting_time = random.expovariate(1 / st.session_state.mu)
+    typewriter(f"> New subjects arriving... {arrivals} joined the queue.")
+    typewriter(f"> Estimated waiting time: {waiting_time:.2f} units.")
+    if arrivals > st.session_state.mu:
+        typewriter("> λ > μ — The queue is unstable. System under stress.")
+    else:
+        typewriter("> System stable... for now.")
+    st.session_state.toxicity += np.random.poisson(4)
+    time.sleep(0.5)
 
-    # Roulette choice
-    type_text("It’s your turn at the roulette.")
-    spin = st.radio("Choose:", ["[1] Spin the chamber (independent)", "[2] Don’t spin (dependent)"])
-    if st.button("Pull the trigger"):
+
+def roulette_phase():
+    typewriter("\n> The revolver is placed before you.")
+    typewriter("> 6 chambers. 1 bullet.")
+    choice = st.radio("Do you spin the chamber?", ["Spin (Independent event)", "Don’t spin (Dependent event)"], key=f"choice_{st.session_state.rounds}")
+    if st.button("Pull the trigger ⚙️", key=f"trigger_{st.session_state.rounds}"):
         bullet = random.randint(1, 6)
-        if spin.startswith("[1]"):
-            chamber = random.randint(1, 6)
-        else:
-            chamber = bullet  # depends on prior state, same distribution effectively
-
-        if chamber == 1:
-            type_text("💥 The chamber fires. Simulation ends.")
+        spin = random.randint(1, 6) if "Spin" in choice else 1
+        if bullet == spin:
+            typewriter("💥 Bang. Experiment terminated.")
             st.session_state.alive = False
         else:
-            type_text("Click. Empty. You live another round.")
-            st.session_state.toxicity -= 10
-            st.session_state.survival_prob *= (5/6)
-            st.session_state.round += 1
-            st.session_state.queue_len = max(1, st.session_state.queue_len - 1)
-
-            # Report
-            stable = "Stable" if st.session_state.lmbd < st.session_state.mu else "Collapsed"
-            st.session_state.report = f"""
---- ROUND SUMMARY ---
-Rounds Survived: {st.session_state.round - 1}
-Current Toxicity: {min(st.session_state.toxicity, 100):.1f}%
-Expected Queue Length: {st.session_state.queue_len:.2f}
-λ = {st.session_state.lmbd:.2f}   μ = {st.session_state.mu:.2f}
-Survival Probability (so far): {st.session_state.survival_prob:.2f}
-System Stability: {stable}
-----------------------
-"""
+            typewriter("Click. Empty chamber. You live another round.")
+            antidote_gain = np.random.poisson(2)
+            st.session_state.toxicity = max(0, st.session_state.toxicity - antidote_gain)
+            typewriter(f"> You gained {antidote_gain}% antidote.")
+            st.session_state.rounds += 1
             st.rerun()
 
-else:
-    # ENDINGS
-    if st.session_state.toxicity >= 100:
-        end = "☣️ Toxicity overload. System failure."
-    elif st.session_state.lmbd >= st.session_state.mu:
-        end = "⚠️ Queue overflow. Chaos reigns."
-    elif st.session_state.round >= 10 and st.session_state.lmbd < st.session_state.mu:
-        end = "🧪 You balanced λ and μ. Dr. Lambda nods. You beat the process."
+
+def poison_phase():
+    drops = np.random.poisson(1)
+    if drops > 0:
+        st.session_state.toxicity += drops * 8
+        typewriter(f"> {drops} drops of toxin leaked. Toxicity +{drops*8}%.")
     else:
-        end = "Simulation terminated."
-    st.markdown(f"<p class='big'>{end}</p>", unsafe_allow_html=True)
-    st.markdown(f"<pre>{st.session_state.report}</pre>", unsafe_allow_html=True)
-    if st.button("Restart"):
-        for k in list(st.session_state.keys()):
-            del st.session_state[k]
+        typewriter("> No new leaks detected.")
+    time.sleep(0.5)
+
+
+def report_phase():
+    survival_prob = max(0, 1 - (st.session_state.toxicity / 120))
+    queue_length = np.random.poisson(3)
+    typewriter("\n--- ROUND SUMMARY ---")
+    typewriter(f"Rounds Survived: {st.session_state.rounds}")
+    typewriter(f"Current Toxicity: {st.session_state.toxicity}%")
+    typewriter(f"Expected Queue Length: {queue_length}")
+    typewriter(f"λ = {st.session_state.lmbd}   μ = {st.session_state.mu}")
+    typewriter(f"Survival Probability: {survival_prob:.2f}")
+    typewriter("----------------------")
+
+    if st.session_state.toxicity >= 100:
+        typewriter("☠ Toxicity overload. System failure.")
+        st.session_state.alive = False
+
+
+# =========================
+# 🚀 Main Game Loop
+# =========================
+st.markdown("<h1 class='title'>λ: THE LAST QUEUE</h1>", unsafe_allow_html=True)
+
+if not st.session_state.started:
+    if st.button("BEGIN EXPERIMENT 🧪"):
+        st.session_state.started = True
+        st.session_state.alive = True
         st.rerun()
+else:
+    if st.session_state.alive:
+        typewriter("WELCOME, SUBJECT #417.")
+        queue_phase()
+        poison_phase()
+        roulette_phase()
+        if st.session_state.alive:
+            report_phase()
+    else:
+        typewriter("EXPERIMENT OVER.")
+        typewriter(f"Final Rounds Survived: {st.session_state.rounds}")
+        if st.button("Restart"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
+
